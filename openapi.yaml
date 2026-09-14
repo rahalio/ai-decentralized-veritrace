@@ -1,0 +1,640 @@
+openapi: 3.0.3
+info:
+  title: Veritrace
+  version: 0.1.0
+  description: >-
+    Learner-owned learning-block integrity with optional on-chain hash anchoring for education research.
+  x-product-slug: ai-decentralized-veritrace
+  x-source: ai-in-decentralized+ai/trustprivacyandtheblockchain-180708114119/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Spaces
+    description: Learning spaces and activity hooks
+  - name: Blocks
+    description: Signed learning blocks and LBR delivery
+  - name: Commitments
+    description: Optional chain hash anchors
+  - name: Consents
+    description: Purpose-limited research access grants
+  - name: Verifications
+    description: Integrity checks on retrieval
+  - name: Exports
+    description: Verified research export packages
+
+paths:
+  /v1/spaces:
+    get:
+      operationId: listLearningSpaces
+      tags: [Spaces]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Spaces page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeLearningSpace" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: registerLearningSpace
+      tags: [Spaces]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningSpaceCreate" }
+      responses:
+        "201":
+          description: Space registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeLearningSpace" }
+  /v1/spaces/{spaceId}:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getLearningSpace
+      tags: [Spaces]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      responses:
+        "200":
+          description: Space
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeLearningSpace" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/spaces/{spaceId}/necessity-decisions:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: recordNecessityDecision
+      tags: [Spaces]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NecessityDecisionCreate" }
+      responses:
+        "201":
+          description: Decision recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeNecessityDecision" }
+  /v1/blocks:
+    post:
+      operationId: emitLearningBlock
+      tags: [Blocks]
+      security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LearningBlockCreate" }
+      responses:
+        "201":
+          description: Block assembled and delivered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeLearningBlock" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      operationId: listLearningBlocks
+      tags: [Blocks]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: learnerId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Blocks page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeLearningBlock" }
+  /v1/blocks/{blockId}:
+    parameters:
+      - name: blockId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getLearningBlockMeta
+      tags: [Blocks]
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Block metadata (not raw traces)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeLearningBlock" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/commitments:
+    post:
+      operationId: anchorCommitment
+      tags: [Commitments]
+      security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChainCommitmentCreate" }
+      responses:
+        "201":
+          description: Commitment anchored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeChainCommitment" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      operationId: listCommitments
+      tags: [Commitments]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Commitments page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeChainCommitment" }
+  /v1/commitments/{commitmentId}:
+    parameters:
+      - name: commitmentId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCommitment
+      tags: [Commitments]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      responses:
+        "200":
+          description: Commitment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeChainCommitment" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /v1/consents:
+    get:
+      operationId: listConsents
+      tags: [Consents]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Consents page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeConsentGrant" }
+    post:
+      operationId: createConsentGrant
+      tags: [Consents]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConsentGrantCreate" }
+      responses:
+        "201":
+          description: Consent granted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeConsentGrant" }
+  /v1/consents/{consentId}/revoke:
+    parameters:
+      - name: consentId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: revokeConsent
+      tags: [Consents]
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Consent revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeConsentGrant" }
+  /v1/verifications:
+    post:
+      operationId: verifyLearningBlock
+      tags: [Verifications]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerificationRequest" }
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeVerificationResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+    get:
+      operationId: listVerifications
+      tags: [Verifications]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Verifications page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeVerificationResult" }
+  /v1/exports:
+    post:
+      operationId: createResearchExport
+      tags: [Exports]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResearchExportCreate" }
+      responses:
+        "201":
+          description: Export created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeResearchExport" }
+    get:
+      operationId: listResearchExports
+      tags: [Exports]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Exports page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeResearchExport" }
+  /v1/exports/{exportId}:
+    parameters:
+      - name: exportId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getResearchExport
+      tags: [Exports]
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: Export
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeResearchExport" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    BadRequest:
+      description: Bad request
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    LearningSpace:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        researchCollectionEnabled: { type: boolean }
+        anchoringEnabled: { type: boolean }
+    LearningSpaceCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        researchCollectionEnabled: { type: boolean, default: false }
+    NecessityDecision:
+      type: object
+      required: [id, spaceId, useBlockchain]
+      properties:
+        id: { type: string }
+        spaceId: { type: string }
+        useBlockchain: { type: boolean }
+        rationale: { type: string }
+        criteria:
+          type: object
+          additionalProperties: { type: boolean }
+        decidedAt: { type: string, format: date-time }
+    NecessityDecisionCreate:
+      type: object
+      required: [useBlockchain, rationale]
+      properties:
+        useBlockchain: { type: boolean }
+        rationale: { type: string }
+        criteria:
+          type: object
+          additionalProperties: { type: boolean }
+    LearningBlock:
+      type: object
+      required: [id, spaceId, learnerId, contentHash, status]
+      properties:
+        id: { type: string }
+        spaceId: { type: string }
+        learnerId: { type: string }
+        activityId: { type: string }
+        contentHash: { type: string }
+        lbrEndpointId: { type: string }
+        status: { type: string, enum: [delivered, pending_lbr, deleted] }
+        createdAt: { type: string, format: date-time }
+    LearningBlockCreate:
+      type: object
+      required: [spaceId, learnerId, activityId, events, lbrEndpointId]
+      properties:
+        spaceId: { type: string }
+        learnerId: { type: string }
+        activityId: { type: string }
+        lbrEndpointId: { type: string }
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        anchorIfPolicyAllows: { type: boolean, default: true }
+    ChainCommitment:
+      type: object
+      required: [id, blockId, commitmentHash]
+      properties:
+        id: { type: string }
+        blockId: { type: string }
+        commitmentHash: { type: string }
+        ledgerTxId: { type: string }
+        containsPersonalData: { type: boolean, enum: [false] }
+        anchoredAt: { type: string, format: date-time }
+    ChainCommitmentCreate:
+      type: object
+      required: [blockId]
+      properties:
+        blockId: { type: string }
+        ledgerNetworkId: { type: string }
+    ConsentGrant:
+      type: object
+      required: [id, learnerId, researcherId, purpose, status]
+      properties:
+        id: { type: string }
+        learnerId: { type: string }
+        researcherId: { type: string }
+        purpose: { type: string }
+        expiresAt: { type: string, format: date-time }
+        status: { type: string, enum: [active, revoked, expired] }
+        blockIds:
+          type: array
+          items: { type: string }
+    ConsentGrantCreate:
+      type: object
+      required: [learnerId, researcherId, purpose, expiresAt, blockIds]
+      properties:
+        learnerId: { type: string }
+        researcherId: { type: string }
+        purpose: { type: string }
+        expiresAt: { type: string, format: date-time }
+        blockIds:
+          type: array
+          items: { type: string }
+    VerificationRequest:
+      type: object
+      required: [blockId, consentId]
+      properties:
+        blockId: { type: string }
+        consentId: { type: string }
+    VerificationResult:
+      type: object
+      required: [id, blockId, status]
+      properties:
+        id: { type: string }
+        blockId: { type: string }
+        consentId: { type: string }
+        status: { type: string, enum: [valid, mismatch, consent_denied, lbr_offline] }
+        expectedHash: { type: string }
+        observedHash: { type: string }
+        verifiedAt: { type: string, format: date-time }
+    ResearchExport:
+      type: object
+      required: [id, consentId, status]
+      properties:
+        id: { type: string }
+        consentId: { type: string }
+        verificationIds:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [pending, ready, failed] }
+        downloadUrl: { type: string, format: uri }
+    ResearchExportCreate:
+      type: object
+      required: [consentId, blockIds]
+      properties:
+        consentId: { type: string }
+        blockIds:
+          type: array
+          items: { type: string }
+
+    DataEnvelopeLearningSpace:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/LearningSpace" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeLearningSpace:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LearningSpace" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeNecessityDecision:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/NecessityDecision" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeNecessityDecision:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/NecessityDecision" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeLearningBlock:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/LearningBlock" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeLearningBlock:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LearningBlock" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeChainCommitment:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ChainCommitment" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeChainCommitment:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ChainCommitment" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeConsentGrant:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ConsentGrant" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeConsentGrant:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ConsentGrant" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeVerificationResult:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/VerificationResult" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeVerificationResult:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/VerificationResult" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+    DataEnvelopeResearchExport:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ResearchExport" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeResearchExport:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ResearchExport" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
