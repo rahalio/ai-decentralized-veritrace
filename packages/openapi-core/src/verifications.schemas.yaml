@@ -1,0 +1,209 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Verifications schemas
+  version: 0.1.0
+  description: Verification and TamperEvent schemas with envelope responses.
+paths: {}
+components:
+  schemas:
+    VerificationStatus:
+      type: string
+      description: |
+        valid — hash matches commitment;
+        mismatch — tamper suspected;
+        consent_denied — no active grant;
+        lbr_offline — LBR unreachable (not tamper);
+        no_anchor — policy skip / no commitment (explicit path).
+      enum:
+        - valid
+        - mismatch
+        - consent_denied
+        - lbr_offline
+        - no_anchor
+
+    Verification:
+      type: object
+      description: Integrity check result for a retrieved learning block.
+      required:
+        - verificationId
+        - blockId
+        - status
+        - verifiedAt
+        - createdAt
+      properties:
+        verificationId:
+          $ref: ./common/primitives.yaml#/components/schemas/VerificationId
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        consentId:
+          $ref: ./common/primitives.yaml#/components/schemas/ConsentId
+        commitmentId:
+          $ref: ./common/primitives.yaml#/components/schemas/CommitmentId
+        status:
+          $ref: '#/components/schemas/VerificationStatus'
+        expectedHash:
+          type: string
+          maxLength: 128
+        observedHash:
+          type: string
+          maxLength: 128
+        tamperEventId:
+          $ref: ./common/primitives.yaml#/components/schemas/TamperEventId
+          description: Set when status is mismatch and an incident was opened.
+        detail:
+          type: string
+          maxLength: 2000
+        verifiedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    VerificationCreate:
+      type: object
+      description: Request body to verify a block under a consent grant.
+      required:
+        - blockId
+        - consentId
+      properties:
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        consentId:
+          $ref: ./common/primitives.yaml#/components/schemas/ConsentId
+        allowNoAnchor:
+          type: boolean
+          default: false
+          description: When true, missing commitment yields no_anchor instead of hard fail.
+
+    TamperEventStatus:
+      type: string
+      enum:
+        - open
+        - acknowledged
+        - resolved
+
+    TamperEvent:
+      type: object
+      description: Operational incident opened on verification mismatch.
+      required:
+        - tamperEventId
+        - verificationId
+        - blockId
+        - status
+        - detectedAt
+        - createdAt
+        - updatedAt
+      properties:
+        tamperEventId:
+          $ref: ./common/primitives.yaml#/components/schemas/TamperEventId
+        verificationId:
+          $ref: ./common/primitives.yaml#/components/schemas/VerificationId
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        commitmentId:
+          $ref: ./common/primitives.yaml#/components/schemas/CommitmentId
+        status:
+          $ref: '#/components/schemas/TamperEventStatus'
+        expectedHash:
+          type: string
+          maxLength: 128
+        observedHash:
+          type: string
+          maxLength: 128
+        assignedTo:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        rootCause:
+          type: string
+          maxLength: 4000
+        playbookRef:
+          type: string
+          maxLength: 300
+        detectedAt:
+          type: string
+          format: date-time
+        acknowledgedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TamperEventAcknowledge:
+      type: object
+      properties:
+        assignedTo:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        note:
+          type: string
+          maxLength: 2000
+
+    VerificationListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Verification'
+        nextCursor:
+          type: string
+
+    VerificationResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Verification'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    VerificationListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/VerificationListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    TamperEventListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TamperEvent'
+        nextCursor:
+          type: string
+
+    TamperEventResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/TamperEvent'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    TamperEventListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/TamperEventListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

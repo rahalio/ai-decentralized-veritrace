@@ -1,0 +1,260 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Blocks API
+  version: 0.1.0
+  description: |
+    Signed learning-block emission to learner LBRs and deletion requests.
+    Platform stores metadata and hashes — not raw activity traces by default.
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: blk
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: Blocks
+    description: Learning block emit, list, and metadata
+  - name: DeletionRequests
+    description: Learner LBR raw-block deletion requests
+paths:
+  /v1/blocks:
+    get:
+      operationId: listLearningBlocks
+      tags: [Blocks]
+      summary: List learning block metadata
+      description: |
+        Metadata only (hashes, status, LBR linkage). Raw traces stay in the learner LBR.
+        Filter by learnerId when listing a learner's blocks.
+      x-dynamodb:
+        entityType: "BLOCK"
+        pkPatternTemplate: "BLOCK#${blockId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: learnerId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        - name: spaceId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./blocks.schemas.yaml#/components/schemas/LearningBlockStatus
+      responses:
+        '200':
+          description: Blocks page
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/LearningBlockListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: emitLearningBlock
+      tags: [Blocks]
+      summary: Emit a signed learning block
+      description: |
+        Assemble a signed learning block at activity close and deliver to the learner LBR.
+        If no LBR is linked, status stays pending_lbr — do not silently centralise raw traces.
+      x-dynamodb:
+        entityType: "BLOCK"
+        pkPatternTemplate: "BLOCK#${blockId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./blocks.schemas.yaml#/components/schemas/LearningBlockCreate
+      responses:
+        '201':
+          description: Block assembled (delivered or pending LBR)
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/LearningBlockResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/blocks/{blockId}:
+    get:
+      operationId: getLearningBlockMeta
+      tags: [Blocks]
+      summary: Get learning block metadata
+      description: Returns metadata and hashes only — not raw activity events.
+      x-dynamodb:
+        entityType: "BLOCK"
+        pkPatternTemplate: "BLOCK#${blockId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/BlockId
+      responses:
+        '200':
+          description: Block metadata
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/LearningBlockResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/blocks/{blockId}/deletion-requests:
+    post:
+      operationId: createDeletionRequest
+      tags: [DeletionRequests]
+      summary: Request deletion of a block from the learner LBR
+      description: |
+        Withdrawal path (BR-7). Deletes raw blocks in the LBR while leaving unlinkable
+        chain commitments intact.
+      x-dynamodb:
+        entityType: "DELETION"
+        pkPatternTemplate: "DELETION#${deletionRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: blockId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ./blocks.schemas.yaml#/components/schemas/DeletionRequestCreate
+      responses:
+        '201':
+          description: Deletion request created
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/DeletionRequestResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/deletion-requests:
+    get:
+      operationId: listDeletionRequests
+      tags: [DeletionRequests]
+      summary: List deletion requests
+      x-dynamodb:
+        entityType: "DELETION"
+        pkPatternTemplate: "DELETION#${deletionRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: learnerId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./blocks.schemas.yaml#/components/schemas/DeletionRequestStatus
+      responses:
+        '200':
+          description: Deletion requests page
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/DeletionRequestListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/deletion-requests/{deletionRequestId}:
+    get:
+      operationId: getDeletionRequest
+      tags: [DeletionRequests]
+      summary: Get deletion request by id
+      x-dynamodb:
+        entityType: "DELETION"
+        pkPatternTemplate: "DELETION#${deletionRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: deletionRequestId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/DeletionRequestId
+      responses:
+        '200':
+          description: Deletion request
+          content:
+            application/json:
+              schema:
+                $ref: ./blocks.schemas.yaml#/components/schemas/DeletionRequestResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey

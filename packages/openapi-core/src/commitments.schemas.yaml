@@ -1,0 +1,101 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Commitments schemas
+  version: 0.1.0
+  description: ChainCommitment schemas with envelope responses. No personal data on ledger.
+paths: {}
+components:
+  schemas:
+    ChainCommitment:
+      type: object
+      description: |
+        Opaque hash anchor on a ledger. `containsPersonalData` is constrained to false —
+        identifying metadata must never appear on chain (BR-5).
+      required:
+        - commitmentId
+        - blockId
+        - commitmentHash
+        - containsPersonalData
+        - anchoredAt
+        - createdAt
+      properties:
+        commitmentId:
+          $ref: ./common/primitives.yaml#/components/schemas/CommitmentId
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        commitmentHash:
+          type: string
+          description: Opaque hash written to the ledger.
+          minLength: 16
+          maxLength: 128
+        ledgerTxId:
+          type: string
+          description: Ledger transaction / receipt id when known.
+          maxLength: 200
+        ledgerNetworkId:
+          type: string
+          maxLength: 100
+        ledgerAdapterId:
+          $ref: ./common/primitives.yaml#/components/schemas/LedgerAdapterId
+        containsPersonalData:
+          type: boolean
+          enum: [false]
+          description: Always false. Enforced at write time.
+        anchoredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ChainCommitmentCreate:
+      type: object
+      required:
+        - blockId
+      properties:
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        ledgerNetworkId:
+          type: string
+          maxLength: 100
+        ledgerAdapterId:
+          $ref: ./common/primitives.yaml#/components/schemas/LedgerAdapterId
+        containsPersonalData:
+          type: boolean
+          enum: [false]
+          default: false
+          description: Must be omitted or false. True is rejected.
+
+    ChainCommitmentListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChainCommitment'
+        nextCursor:
+          type: string
+
+    ChainCommitmentResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ChainCommitment'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    ChainCommitmentListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ChainCommitmentListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

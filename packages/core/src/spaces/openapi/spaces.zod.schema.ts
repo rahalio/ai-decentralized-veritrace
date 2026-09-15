@@ -1,0 +1,1158 @@
+import { makeApi, Zodios, type ZodiosOptions } from '@zodios/core';
+import { z } from 'zod';
+
+const registerLearningSpace_Body = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).optional(),
+    externalSpaceRef: z.string().max(200).optional(),
+    researchCollectionEnabled: z.boolean().optional().default(false),
+  })
+  .passthrough();
+const recordNecessityDecision_Body = z
+  .object({
+    useBlockchain: z.boolean(),
+    outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+    criteria: z
+      .object({
+        sharedStateRequired: z.boolean(),
+        multipleWriters: z.boolean(),
+        trustedThirdPartyAvailable: z.boolean(),
+        writersKnownInAdvance: z.boolean(),
+        additionalFlags: z.record(z.boolean()),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    rationale: z.string().min(1).max(4000),
+    feeLatencyAccepted: z.boolean(),
+    reviewAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .passthrough();
+const Problem = z
+  .object({
+    type: z.string().url(),
+    title: z.string(),
+    status: z.number().int(),
+    detail: z.string(),
+    instance: z.string().url(),
+    code: z.string(),
+  })
+  .partial()
+  .passthrough();
+const SpaceId = z.string();
+const NecessityDecisionId = z.string();
+const LearningSpace = z
+  .object({
+    spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).optional(),
+    externalSpaceRef: z.string().max(200).optional(),
+    researchCollectionEnabled: z.boolean(),
+    anchoringEnabled: z.boolean(),
+    latestNecessityDecisionId: z
+      .string()
+      .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    activityHookStatus: z
+      .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+      .optional(),
+    learnerOptInCount: z.number().int().gte(0).optional(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const LearningSpaceListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+          name: z.string().min(1).max(200),
+          description: z.string().max(2000).optional(),
+          externalSpaceRef: z.string().max(200).optional(),
+          researchCollectionEnabled: z.boolean(),
+          anchoringEnabled: z.boolean(),
+          latestNecessityDecisionId: z
+            .string()
+            .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+            .optional(),
+          activityHookStatus: z
+            .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+            .optional(),
+          learnerOptInCount: z.number().int().gte(0).optional(),
+          createdAt: z.string().datetime({ offset: true }),
+          updatedAt: z.string().datetime({ offset: true }),
+        })
+        .passthrough()
+    ),
+    nextCursor: z.string().optional(),
+  })
+  .passthrough();
+const ResponseMeta = z
+  .object({
+    requestId: z.string().uuid(),
+    correlationId: z.string(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .partial()
+  .passthrough();
+const LearningSpaceListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+              name: z.string().min(1).max(200),
+              description: z.string().max(2000).optional(),
+              externalSpaceRef: z.string().max(200).optional(),
+              researchCollectionEnabled: z.boolean(),
+              anchoringEnabled: z.boolean(),
+              latestNecessityDecisionId: z
+                .string()
+                .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+                .optional(),
+              activityHookStatus: z
+                .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+                .optional(),
+              learnerOptInCount: z.number().int().gte(0).optional(),
+              createdAt: z.string().datetime({ offset: true }),
+              updatedAt: z.string().datetime({ offset: true }),
+            })
+            .passthrough()
+        ),
+        nextCursor: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const LearningSpaceCreate = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).optional(),
+    externalSpaceRef: z.string().max(200).optional(),
+    researchCollectionEnabled: z.boolean().optional().default(false),
+  })
+  .passthrough();
+const LearningSpaceResponse = z
+  .object({
+    data: z
+      .object({
+        spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+        name: z.string().min(1).max(200),
+        description: z.string().max(2000).optional(),
+        externalSpaceRef: z.string().max(200).optional(),
+        researchCollectionEnabled: z.boolean(),
+        anchoringEnabled: z.boolean(),
+        latestNecessityDecisionId: z
+          .string()
+          .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+          .optional(),
+        activityHookStatus: z
+          .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+          .optional(),
+        learnerOptInCount: z.number().int().gte(0).optional(),
+        createdAt: z.string().datetime({ offset: true }),
+        updatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const NecessityOutcome = z.enum(['permissioned', 'permissionless', 'no_chain']);
+const NecessityCriteria = z
+  .object({
+    sharedStateRequired: z.boolean(),
+    multipleWriters: z.boolean(),
+    trustedThirdPartyAvailable: z.boolean(),
+    writersKnownInAdvance: z.boolean(),
+    additionalFlags: z.record(z.boolean()),
+  })
+  .partial()
+  .passthrough();
+const UserId = z.string();
+const NecessityDecision = z
+  .object({
+    necessityDecisionId: z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+    spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+    useBlockchain: z.boolean(),
+    outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+    criteria: z
+      .object({
+        sharedStateRequired: z.boolean(),
+        multipleWriters: z.boolean(),
+        trustedThirdPartyAvailable: z.boolean(),
+        writersKnownInAdvance: z.boolean(),
+        additionalFlags: z.record(z.boolean()),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    rationale: z.string().min(1).max(4000),
+    feeLatencyAccepted: z.boolean(),
+    decidedBy: z
+      .string()
+      .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
+    decidedAt: z.string().datetime({ offset: true }),
+    reviewAt: z.string().datetime({ offset: true }).optional(),
+    createdAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const NecessityDecisionListData = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          necessityDecisionId: z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+          spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+          useBlockchain: z.boolean(),
+          outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+          criteria: z
+            .object({
+              sharedStateRequired: z.boolean(),
+              multipleWriters: z.boolean(),
+              trustedThirdPartyAvailable: z.boolean(),
+              writersKnownInAdvance: z.boolean(),
+              additionalFlags: z.record(z.boolean()),
+            })
+            .partial()
+            .passthrough()
+            .optional(),
+          rationale: z.string().min(1).max(4000),
+          feeLatencyAccepted: z.boolean(),
+          decidedBy: z
+            .string()
+            .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+            .optional(),
+          decidedAt: z.string().datetime({ offset: true }),
+          reviewAt: z.string().datetime({ offset: true }).optional(),
+          createdAt: z.string().datetime({ offset: true }),
+        })
+        .passthrough()
+    ),
+    nextCursor: z.string().optional(),
+  })
+  .passthrough();
+const NecessityDecisionListResponse = z
+  .object({
+    data: z
+      .object({
+        items: z.array(
+          z
+            .object({
+              necessityDecisionId: z
+                .string()
+                .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+              spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+              useBlockchain: z.boolean(),
+              outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+              criteria: z
+                .object({
+                  sharedStateRequired: z.boolean(),
+                  multipleWriters: z.boolean(),
+                  trustedThirdPartyAvailable: z.boolean(),
+                  writersKnownInAdvance: z.boolean(),
+                  additionalFlags: z.record(z.boolean()),
+                })
+                .partial()
+                .passthrough()
+                .optional(),
+              rationale: z.string().min(1).max(4000),
+              feeLatencyAccepted: z.boolean(),
+              decidedBy: z
+                .string()
+                .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+                .optional(),
+              decidedAt: z.string().datetime({ offset: true }),
+              reviewAt: z.string().datetime({ offset: true }).optional(),
+              createdAt: z.string().datetime({ offset: true }),
+            })
+            .passthrough()
+        ),
+        nextCursor: z.string().optional(),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const NecessityDecisionCreate = z
+  .object({
+    useBlockchain: z.boolean(),
+    outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+    criteria: z
+      .object({
+        sharedStateRequired: z.boolean(),
+        multipleWriters: z.boolean(),
+        trustedThirdPartyAvailable: z.boolean(),
+        writersKnownInAdvance: z.boolean(),
+        additionalFlags: z.record(z.boolean()),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    rationale: z.string().min(1).max(4000),
+    feeLatencyAccepted: z.boolean(),
+    reviewAt: z.string().datetime({ offset: true }).optional(),
+  })
+  .passthrough();
+const NecessityDecisionResponse = z
+  .object({
+    data: z
+      .object({
+        necessityDecisionId: z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+        spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+        useBlockchain: z.boolean(),
+        outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+        criteria: z
+          .object({
+            sharedStateRequired: z.boolean(),
+            multipleWriters: z.boolean(),
+            trustedThirdPartyAvailable: z.boolean(),
+            writersKnownInAdvance: z.boolean(),
+            additionalFlags: z.record(z.boolean()),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+        rationale: z.string().min(1).max(4000),
+        feeLatencyAccepted: z.boolean(),
+        decidedBy: z
+          .string()
+          .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+          .optional(),
+        decidedAt: z.string().datetime({ offset: true }),
+        reviewAt: z.string().datetime({ offset: true }).optional(),
+        createdAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+const DeletionCompletionMetrics = z
+  .object({
+    requestedCount: z.number().int().gte(0),
+    completedCount: z.number().int().gte(0),
+    failedCount: z.number().int().gte(0),
+    medianCompletionHours: z.number().gte(0),
+  })
+  .partial()
+  .passthrough();
+const DpiAEvidencePack = z
+  .object({
+    spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+    onChainPolicyAttestation: z.string().max(4000),
+    sampleCommitmentHash: z.string().max(128).optional(),
+    necessityDecisionIds: z
+      .array(z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/))
+      .optional(),
+    anchoringEnabled: z.boolean().optional(),
+    personalDataOnLedgerDetected: z.boolean().optional(),
+    deletionMetrics: z
+      .object({
+        requestedCount: z.number().int().gte(0),
+        completedCount: z.number().int().gte(0),
+        failedCount: z.number().int().gte(0),
+        medianCompletionHours: z.number().gte(0),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+    centralCustodyReductionPercent: z.number().gte(0).lte(100).optional(),
+    generatedAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const DpiAEvidencePackResponse = z
+  .object({
+    data: z
+      .object({
+        spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+        onChainPolicyAttestation: z.string().max(4000),
+        sampleCommitmentHash: z.string().max(128).optional(),
+        necessityDecisionIds: z
+          .array(z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/))
+          .optional(),
+        anchoringEnabled: z.boolean().optional(),
+        personalDataOnLedgerDetected: z.boolean().optional(),
+        deletionMetrics: z
+          .object({
+            requestedCount: z.number().int().gte(0),
+            completedCount: z.number().int().gte(0),
+            failedCount: z.number().int().gte(0),
+            medianCompletionHours: z.number().gte(0),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+        centralCustodyReductionPercent: z.number().gte(0).lte(100).optional(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .passthrough(),
+    meta: z
+      .object({
+        requestId: z.string().uuid(),
+        correlationId: z.string(),
+        generatedAt: z.string().datetime({ offset: true }),
+      })
+      .partial()
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export const schemas: any = {
+  registerLearningSpace_Body,
+  recordNecessityDecision_Body,
+  Problem,
+  SpaceId,
+  NecessityDecisionId,
+  LearningSpace,
+  LearningSpaceListData,
+  ResponseMeta,
+  LearningSpaceListResponse,
+  LearningSpaceCreate,
+  LearningSpaceResponse,
+  NecessityOutcome,
+  NecessityCriteria,
+  UserId,
+  NecessityDecision,
+  NecessityDecisionListData,
+  NecessityDecisionListResponse,
+  NecessityDecisionCreate,
+  NecessityDecisionResponse,
+  DeletionCompletionMetrics,
+  DpiAEvidencePack,
+  DpiAEvidencePackResponse,
+};
+
+const endpoints = makeApi([
+  {
+    method: 'get',
+    path: '/v1/spaces',
+    alias: 'listLearningSpaces',
+    description: `Returns registered Graasp-class learning spaces for the tenant.
+Ordered by createdAt descending.
+`,
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(100).optional().default(25),
+      },
+      {
+        name: 'researchCollectionEnabled',
+        type: 'Query',
+        schema: z.boolean().optional(),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  name: z.string().min(1).max(200),
+                  description: z.string().max(2000).optional(),
+                  externalSpaceRef: z.string().max(200).optional(),
+                  researchCollectionEnabled: z.boolean(),
+                  anchoringEnabled: z.boolean(),
+                  latestNecessityDecisionId: z
+                    .string()
+                    .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+                    .optional(),
+                  activityHookStatus: z
+                    .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+                    .optional(),
+                  learnerOptInCount: z.number().int().gte(0).optional(),
+                  createdAt: z.string().datetime({ offset: true }),
+                  updatedAt: z.string().datetime({ offset: true }),
+                })
+                .passthrough()
+            ),
+            nextCursor: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/spaces',
+    alias: 'registerLearningSpace',
+    description: `Register a learning space with activity hooks. Research collection defaults off;
+anchoring stays disabled until a necessity decision allows it.
+`,
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: registerLearningSpace_Body,
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            description: z.string().max(2000).optional(),
+            externalSpaceRef: z.string().max(200).optional(),
+            researchCollectionEnabled: z.boolean(),
+            anchoringEnabled: z.boolean(),
+            latestNecessityDecisionId: z
+              .string()
+              .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+              .optional(),
+            activityHookStatus: z
+              .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+              .optional(),
+            learnerOptInCount: z.number().int().gte(0).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 409,
+        description: `Idempotency key reuse with different body, or state conflict`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/spaces/:spaceId',
+    alias: 'getLearningSpace',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'spaceId',
+        type: 'Path',
+        schema: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+            name: z.string().min(1).max(200),
+            description: z.string().max(2000).optional(),
+            externalSpaceRef: z.string().max(200).optional(),
+            researchCollectionEnabled: z.boolean(),
+            anchoringEnabled: z.boolean(),
+            latestNecessityDecisionId: z
+              .string()
+              .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/)
+              .optional(),
+            activityHookStatus: z
+              .enum(['unconfigured', 'healthy', 'degraded', 'failed'])
+              .optional(),
+            learnerOptInCount: z.number().int().gte(0).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+            updatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/spaces/:spaceId/dpia-evidence',
+    alias: 'getDpiAEvidencePack',
+    description: `Prove raw traces are not on chain; surface necessity decisions and deletion
+completion metrics for privacy-officer export.
+`,
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'spaceId',
+        type: 'Path',
+        schema: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+            onChainPolicyAttestation: z.string().max(4000),
+            sampleCommitmentHash: z.string().max(128).optional(),
+            necessityDecisionIds: z
+              .array(z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/))
+              .optional(),
+            anchoringEnabled: z.boolean().optional(),
+            personalDataOnLedgerDetected: z.boolean().optional(),
+            deletionMetrics: z
+              .object({
+                requestedCount: z.number().int().gte(0),
+                completedCount: z.number().int().gte(0),
+                failedCount: z.number().int().gte(0),
+                medianCompletionHours: z.number().gte(0),
+              })
+              .partial()
+              .passthrough()
+              .optional(),
+            centralCustodyReductionPercent: z
+              .number()
+              .gte(0)
+              .lte(100)
+              .optional(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/spaces/:spaceId/necessity-decisions',
+    alias: 'listNecessityDecisions',
+    description: `Decision log for DPIA and ops queue (newest first).`,
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'spaceId',
+        type: 'Path',
+        schema: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'cursor',
+        type: 'Query',
+        schema: z.string().optional(),
+      },
+      {
+        name: 'limit',
+        type: 'Query',
+        schema: z.number().int().gte(1).lte(100).optional().default(25),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            items: z.array(
+              z
+                .object({
+                  necessityDecisionId: z
+                    .string()
+                    .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+                  useBlockchain: z.boolean(),
+                  outcome: z.enum([
+                    'permissioned',
+                    'permissionless',
+                    'no_chain',
+                  ]),
+                  criteria: z
+                    .object({
+                      sharedStateRequired: z.boolean(),
+                      multipleWriters: z.boolean(),
+                      trustedThirdPartyAvailable: z.boolean(),
+                      writersKnownInAdvance: z.boolean(),
+                      additionalFlags: z.record(z.boolean()),
+                    })
+                    .partial()
+                    .passthrough()
+                    .optional(),
+                  rationale: z.string().min(1).max(4000),
+                  feeLatencyAccepted: z.boolean(),
+                  decidedBy: z
+                    .string()
+                    .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+                    .optional(),
+                  decidedAt: z.string().datetime({ offset: true }),
+                  reviewAt: z.string().datetime({ offset: true }).optional(),
+                  createdAt: z.string().datetime({ offset: true }),
+                })
+                .passthrough()
+            ),
+            nextCursor: z.string().optional(),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'post',
+    path: '/v1/spaces/:spaceId/necessity-decisions',
+    alias: 'recordNecessityDecision',
+    description: `Wüst–Gervais-style recorded decision before any chain anchoring is enabled —
+including fee/latency acceptance or explicit skip (no chain).
+`,
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'body',
+        type: 'Body',
+        schema: recordNecessityDecision_Body,
+      },
+      {
+        name: 'spaceId',
+        type: 'Path',
+        schema: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'Idempotency-Key',
+        type: 'Header',
+        schema: z.string().min(1).max(128),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            necessityDecisionId: z
+              .string()
+              .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+            spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+            useBlockchain: z.boolean(),
+            outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+            criteria: z
+              .object({
+                sharedStateRequired: z.boolean(),
+                multipleWriters: z.boolean(),
+                trustedThirdPartyAvailable: z.boolean(),
+                writersKnownInAdvance: z.boolean(),
+                additionalFlags: z.record(z.boolean()),
+              })
+              .partial()
+              .passthrough()
+              .optional(),
+            rationale: z.string().min(1).max(4000),
+            feeLatencyAccepted: z.boolean(),
+            decidedBy: z
+              .string()
+              .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+              .optional(),
+            decidedAt: z.string().datetime({ offset: true }),
+            reviewAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 400,
+        description: `Malformed request`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 409,
+        description: `Idempotency key reuse with different body, or state conflict`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+  {
+    method: 'get',
+    path: '/v1/spaces/:spaceId/necessity-decisions/:necessityDecisionId',
+    alias: 'getNecessityDecision',
+    requestFormat: 'json',
+    parameters: [
+      {
+        name: 'spaceId',
+        type: 'Path',
+        schema: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+      {
+        name: 'necessityDecisionId',
+        type: 'Path',
+        schema: z.string().regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+      },
+    ],
+    response: z
+      .object({
+        data: z
+          .object({
+            necessityDecisionId: z
+              .string()
+              .regex(/^nec_[0-9A-HJKMNP-TV-Z]{26}$/),
+            spaceId: z.string().regex(/^spc_[0-9A-HJKMNP-TV-Z]{26}$/),
+            useBlockchain: z.boolean(),
+            outcome: z.enum(['permissioned', 'permissionless', 'no_chain']),
+            criteria: z
+              .object({
+                sharedStateRequired: z.boolean(),
+                multipleWriters: z.boolean(),
+                trustedThirdPartyAvailable: z.boolean(),
+                writersKnownInAdvance: z.boolean(),
+                additionalFlags: z.record(z.boolean()),
+              })
+              .partial()
+              .passthrough()
+              .optional(),
+            rationale: z.string().min(1).max(4000),
+            feeLatencyAccepted: z.boolean(),
+            decidedBy: z
+              .string()
+              .regex(/^usr_[0-9A-HJKMNP-TV-Z]{26}$/)
+              .optional(),
+            decidedAt: z.string().datetime({ offset: true }),
+            reviewAt: z.string().datetime({ offset: true }).optional(),
+            createdAt: z.string().datetime({ offset: true }),
+          })
+          .passthrough(),
+        meta: z
+          .object({
+            requestId: z.string().uuid(),
+            correlationId: z.string(),
+            generatedAt: z.string().datetime({ offset: true }),
+          })
+          .partial()
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+    errors: [
+      {
+        status: 401,
+        description: `Missing or invalid API key`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+      {
+        status: 404,
+        description: `Resource not found`,
+        schema: z
+          .object({
+            type: z.string().url(),
+            title: z.string(),
+            status: z.number().int(),
+            detail: z.string(),
+            instance: z.string().url(),
+            code: z.string(),
+          })
+          .partial()
+          .passthrough(),
+      },
+    ],
+  },
+]);
+
+export const api: any = new Zodios(
+  'https://api.ddd-codegen-starter.local/v1',
+  endpoints
+);
+
+export function createApiClient(baseUrl: string, options?: ZodiosOptions): any {
+  return new Zodios(baseUrl, endpoints, options);
+}

@@ -1,0 +1,337 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Adapters API
+  version: 0.1.0
+  description: |
+    LBR endpoints, ledger adapters (versioned with patch playbooks), and learner LBR linkage.
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: adp
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: LbrEndpoints
+    description: Learning Block Repository endpoint registry
+  - name: LedgerAdapters
+    description: Versioned ledger adapters and patch playbooks
+  - name: LearnerLinkage
+    description: Learner-designated LBR linkage
+paths:
+  /v1/lbr-endpoints:
+    get:
+      operationId: listLbrEndpoints
+      tags: [LbrEndpoints]
+      summary: List LBR endpoints
+      x-dynamodb:
+        entityType: "LBR_ENDPOINT"
+        pkPatternTemplate: "LBR_ENDPOINT#${lbrEndpointId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./adapters.schemas.yaml#/components/schemas/AdapterHealthStatus
+      responses:
+        '200':
+          description: LBR endpoints page
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createLbrEndpoint
+      tags: [LbrEndpoints]
+      summary: Register an LBR endpoint
+      x-dynamodb:
+        entityType: "LBR_ENDPOINT"
+        pkPatternTemplate: "LBR_ENDPOINT#${lbrEndpointId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointCreate
+      responses:
+        '201':
+          description: LBR endpoint created
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/lbr-endpoints/{lbrEndpointId}:
+    get:
+      operationId: getLbrEndpoint
+      tags: [LbrEndpoints]
+      summary: Get LBR endpoint by id
+      x-dynamodb:
+        entityType: "LBR_ENDPOINT"
+        pkPatternTemplate: "LBR_ENDPOINT#${lbrEndpointId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: lbrEndpointId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LbrEndpointId
+      responses:
+        '200':
+          description: LBR endpoint
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    patch:
+      operationId: updateLbrEndpoint
+      tags: [LbrEndpoints]
+      summary: Update an LBR endpoint
+      parameters:
+        - name: lbrEndpointId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LbrEndpointId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointUpdate
+      responses:
+        '200':
+          description: Updated LBR endpoint
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LbrEndpointResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/ledger-adapters:
+    get:
+      operationId: listLedgerAdapters
+      tags: [LedgerAdapters]
+      summary: List ledger adapters
+      x-dynamodb:
+        entityType: "LEDGER_ADAPTER"
+        pkPatternTemplate: "LEDGER_ADAPTER#${ledgerAdapterId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./adapters.schemas.yaml#/components/schemas/AdapterHealthStatus
+      responses:
+        '200':
+          description: Ledger adapters page
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LedgerAdapterListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createLedgerAdapter
+      tags: [LedgerAdapters]
+      summary: Register a ledger adapter
+      description: |
+        Versioned adapter for opaque hash commitments only. Include patch playbook
+        for contract/vulnerability response (BR-9).
+      x-dynamodb:
+        entityType: "LEDGER_ADAPTER"
+        pkPatternTemplate: "LEDGER_ADAPTER#${ledgerAdapterId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./adapters.schemas.yaml#/components/schemas/LedgerAdapterCreate
+      responses:
+        '201':
+          description: Ledger adapter created
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LedgerAdapterResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/ledger-adapters/{ledgerAdapterId}:
+    get:
+      operationId: getLedgerAdapter
+      tags: [LedgerAdapters]
+      summary: Get ledger adapter by id
+      x-dynamodb:
+        entityType: "LEDGER_ADAPTER"
+        pkPatternTemplate: "LEDGER_ADAPTER#${ledgerAdapterId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: ledgerAdapterId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LedgerAdapterId
+      responses:
+        '200':
+          description: Ledger adapter
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LedgerAdapterResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/learners/{learnerId}/lbr-linkage:
+    get:
+      operationId: getLearnerLbrLinkage
+      tags: [LearnerLinkage]
+      summary: Get learner LBR linkage
+      description: Plain-language linkage of where the learner's activity traces live.
+      x-dynamodb:
+        entityType: "LBR_LINKAGE"
+        pkPatternTemplate: "LEARNER#${learnerId}"
+        skPatternTemplate: "LBR_LINKAGE"
+      parameters:
+        - name: learnerId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+      responses:
+        '200':
+          description: Learner LBR linkage
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LearnerLbrLinkageResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: setLearnerLbrLinkage
+      tags: [LearnerLinkage]
+      summary: Set or replace learner LBR linkage
+      description: |
+        Designate an external Learning Block Repository without gas/key/fork UI.
+        Disconnect with deletion prompt is a product UX concern on top of this API.
+      x-dynamodb:
+        entityType: "LBR_LINKAGE"
+        pkPatternTemplate: "LEARNER#${learnerId}"
+        skPatternTemplate: "LBR_LINKAGE"
+      parameters:
+        - name: learnerId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./adapters.schemas.yaml#/components/schemas/LearnerLbrLinkageCreate
+      responses:
+        '200':
+          description: Linkage updated
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LearnerLbrLinkageResponse
+        '201':
+          description: Linkage created
+          content:
+            application/json:
+              schema:
+                $ref: ./adapters.schemas.yaml#/components/schemas/LearnerLbrLinkageResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey

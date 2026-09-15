@@ -1,0 +1,25 @@
+---
+description: Never commit or push the .codegen directory
+globs:
+alwaysApply: true
+---
+
+# `.codegen` must never be committed
+
+The local zero-codegen tool lives under **`.codegen/`**. It is synced from `zero-apps-codegen-scaffold` and is **gitignored**.
+
+## Rules
+
+- Never `git add .codegen` (or any path under it).
+- Never push `.codegen` to GitHub.
+- After cloning this repo, sync codegen locally before running `pnpm codegen:*`:
+
+```bash
+rsync -a --exclude node_modules --exclude .git \
+  /path/to/zero-apps-codegen-scaffold/.codegen/ ./.codegen/
+pnpm codegen:paths
+```
+
+- Bundled OpenAPI under `packages/openapi-core/src/.bundled/` is also generated locally and gitignored.
+- If a PR accidentally includes `.codegen`, remove it before merge.
+---

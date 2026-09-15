@@ -1,0 +1,122 @@
+openapi: 3.1.0
+info:
+  title: Shared primitives
+  version: 0.1.0
+  description: Prefixed IDs and money types shared across domains.
+paths: {}
+components:
+  schemas:
+    TenantId:
+      type: string
+      description: Prefixed ULID-style tenant identifier.
+      pattern: '^tnt_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: tnt_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    UserId:
+      type: string
+      description: Prefixed ULID-style tenant operator user identifier.
+      pattern: '^usr_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: usr_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    SpaceId:
+      type: string
+      description: Prefixed learning-space identifier.
+      pattern: '^spc_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: spc_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    BlockId:
+      type: string
+      description: Prefixed learning-block identifier.
+      pattern: '^blk_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: blk_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    CommitmentId:
+      type: string
+      description: Prefixed chain-commitment identifier.
+      pattern: '^cmt_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: cmt_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    ConsentId:
+      type: string
+      description: Prefixed consent-grant identifier.
+      pattern: '^cns_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: cns_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    VerificationId:
+      type: string
+      description: Prefixed verification-result identifier.
+      pattern: '^vrf_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: vrf_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    ExportId:
+      type: string
+      description: Prefixed research-export identifier.
+      pattern: '^exp_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: exp_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    AdapterId:
+      type: string
+      description: Prefixed adapters-domain identifier (generic).
+      pattern: '^adp_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: adp_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    LbrEndpointId:
+      type: string
+      description: Prefixed Learning Block Repository endpoint identifier.
+      pattern: '^lbr_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: lbr_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    LedgerAdapterId:
+      type: string
+      description: Prefixed ledger-adapter identifier.
+      pattern: '^ldg_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: ldg_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    NecessityDecisionId:
+      type: string
+      description: Prefixed blockchain-necessity decision identifier.
+      pattern: '^nec_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: nec_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    AccessRequestId:
+      type: string
+      description: Prefixed researcher access-request identifier.
+      pattern: '^acr_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: acr_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    TamperEventId:
+      type: string
+      description: Prefixed tamper-incident identifier.
+      pattern: '^tmp_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: tmp_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    DeletionRequestId:
+      type: string
+      description: Prefixed LBR deletion-request identifier.
+      pattern: '^del_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: del_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    LearnerId:
+      type: string
+      description: Prefixed learner identifier.
+      pattern: '^lrn_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: lrn_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    ActivityId:
+      type: string
+      description: Prefixed learning-activity identifier.
+      pattern: '^act_[0-9A-HJKMNP-TV-Z]{26}$'
+      example: act_01HZYXK8J0M0W5N6P7Q8R9S0T1U2
+    Currency:
+      type: string
+      description: ISO 4217 currency code.
+      minLength: 3
+      maxLength: 3
+      pattern: '^[A-Z]{3}$'
+      example: USD
+    Money:
+      type: object
+      description: Decimal-string amount + currency (never IEEE float).
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: string
+          description: Signed decimal string with up to 5 fractional digits.
+          pattern: '^-?\d+(\.\d{1,5})?$'
+          example: "1234.56"
+        currency:
+          $ref: '#/components/schemas/Currency'
+    JobStatus:
+      type: string
+      description: Generic async job lifecycle.
+      enum:
+        - queued
+        - running
+        - done
+        - failed

@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Verifications API
+  version: 0.1.0
+  description: |
+    Integrity checks on retrieval and tamper-incident lifecycle.
+    Fail closed on mismatch, consent denial, or LBR offline (BR-4).
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: vrf
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: Verifications
+    description: Block integrity verification on retrieval
+  - name: TamperEvents
+    description: Tamper / mismatch operational incidents
+paths:
+  /v1/verifications:
+    get:
+      operationId: listVerifications
+      tags: [Verifications]
+      summary: List verification results
+      x-dynamodb:
+        entityType: "VERIFICATION"
+        pkPatternTemplate: "VERIFICATION#${verificationId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: blockId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./verifications.schemas.yaml#/components/schemas/VerificationStatus
+      responses:
+        '200':
+          description: Verifications page
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/VerificationListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: verifyLearningBlock
+      tags: [Verifications]
+      summary: Verify a learning block on retrieval
+      description: |
+        Recompute block hash vs anchored commitment under an active consent.
+        Fail closed on mismatch; LBR offline is distinct from tamper.
+      x-dynamodb:
+        entityType: "VERIFICATION"
+        pkPatternTemplate: "VERIFICATION#${verificationId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./verifications.schemas.yaml#/components/schemas/VerificationCreate
+      responses:
+        '200':
+          description: Verification result (including fail-closed statuses)
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/VerificationResponse
+        '201':
+          description: Verification recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/VerificationResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/verifications/{verificationId}:
+    get:
+      operationId: getVerification
+      tags: [Verifications]
+      summary: Get verification result by id
+      x-dynamodb:
+        entityType: "VERIFICATION"
+        pkPatternTemplate: "VERIFICATION#${verificationId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/VerificationId
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/VerificationResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/tamper-events:
+    get:
+      operationId: listTamperEvents
+      tags: [TamperEvents]
+      summary: List tamper incidents
+      x-dynamodb:
+        entityType: "TAMPER"
+        pkPatternTemplate: "TAMPER#${tamperEventId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./verifications.schemas.yaml#/components/schemas/TamperEventStatus
+      responses:
+        '200':
+          description: Tamper events page
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/TamperEventListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/tamper-events/{tamperEventId}:
+    get:
+      operationId: getTamperEvent
+      tags: [TamperEvents]
+      summary: Get tamper event by id
+      x-dynamodb:
+        entityType: "TAMPER"
+        pkPatternTemplate: "TAMPER#${tamperEventId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: tamperEventId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/TamperEventId
+      responses:
+        '200':
+          description: Tamper event
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/TamperEventResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/tamper-events/{tamperEventId}/acknowledge:
+    post:
+      operationId: acknowledgeTamperEvent
+      tags: [TamperEvents]
+      summary: Acknowledge a tamper incident
+      parameters:
+        - name: tamperEventId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/TamperEventId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ./verifications.schemas.yaml#/components/schemas/TamperEventAcknowledge
+      responses:
+        '200':
+          description: Tamper event acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: ./verifications.schemas.yaml#/components/schemas/TamperEventResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey

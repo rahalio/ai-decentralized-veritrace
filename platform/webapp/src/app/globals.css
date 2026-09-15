@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Veritrace — cool stone / seal-green / deep slate */
+  --color-ink: #e6eaef;
+  --color-ink-soft: #c5ced6;
+  --color-ink-muted: #a8b0b8;
+  --color-stone: #a8b0b8;
+  --color-stone-cool: #8a949e;
+  --color-surface: #0e1419;
+  --color-surface-raised: #161e26;
+  --color-surface-sunken: #0a0f13;
+  --color-seal: #3fa67a;
+  --color-seal-dim: #1f5c44;
+  --color-seal-soft: rgba(63, 166, 122, 0.18);
+  --color-brand: #b8c5c0;
+  --color-amber: #c9922a;
+  --color-tamper: #d94a3d;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --motion-seal: 180ms ease-out;
+  --motion-tamper: 240ms ease-in-out;
+  --motion-consent: 200ms ease-in-out;
+  --shadow-panel: 0 1px 0 rgba(0, 0, 0, 0.25), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(
+      1100px 640px at 8% -12%,
+      color-mix(in srgb, var(--color-seal) 14%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      900px 520px at 92% 0%,
+      color-mix(in srgb, var(--color-brand) 8%, transparent),
+      transparent 50%
+    ),
+    radial-gradient(
+      700px 400px at 50% 110%,
+      color-mix(in srgb, var(--color-seal-dim) 35%, transparent),
+      transparent 55%
+    ),
+    var(--color-surface);
+  color: var(--color-ink);
+}
+
+@layer utilities {
+  .seal-ring {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-seal) 35%, transparent);
+  }
+}

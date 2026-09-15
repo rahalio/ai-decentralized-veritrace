@@ -1,0 +1,314 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Consents API
+  version: 0.1.0
+  description: |
+    Purpose-limited, time-boxed consent grants and researcher access requests.
+    Retrieval stays fail-closed without an active grant (BR-3).
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: cns
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: Consents
+    description: Consent grants for research access
+  - name: AccessRequests
+    description: Researcher access requests awaiting learner decision
+paths:
+  /v1/consents:
+    get:
+      operationId: listConsents
+      tags: [Consents]
+      summary: List consent grants
+      x-dynamodb:
+        entityType: "CONSENT"
+        pkPatternTemplate: "CONSENT#${consentId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: learnerId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        - name: researcherId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/UserId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantStatus
+      responses:
+        '200':
+          description: Consents page
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createConsentGrant
+      tags: [Consents]
+      summary: Create a consent grant
+      description: Learner (or guardian) grants purpose-limited, time-boxed access to selected blocks.
+      x-dynamodb:
+        entityType: "CONSENT"
+        pkPatternTemplate: "CONSENT#${consentId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantCreate
+      responses:
+        '201':
+          description: Consent granted
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/consents/{consentId}:
+    get:
+      operationId: getConsent
+      tags: [Consents]
+      summary: Get consent grant by id
+      x-dynamodb:
+        entityType: "CONSENT"
+        pkPatternTemplate: "CONSENT#${consentId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ConsentId
+      responses:
+        '200':
+          description: Consent grant
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/consents/{consentId}/revoke:
+    post:
+      operationId: revokeConsent
+      tags: [Consents]
+      summary: Revoke a consent grant
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ConsentId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      responses:
+        '200':
+          description: Consent revoked
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/ConsentGrantResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/access-requests:
+    get:
+      operationId: listAccessRequests
+      tags: [AccessRequests]
+      summary: List researcher access requests
+      x-dynamodb:
+        entityType: "ACCESS_REQUEST"
+        pkPatternTemplate: "ACCESS_REQUEST#${accessRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: learnerId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        - name: researcherId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/UserId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestStatus
+      responses:
+        '200':
+          description: Access requests page
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createAccessRequest
+      tags: [AccessRequests]
+      summary: Submit a researcher access request
+      x-dynamodb:
+        entityType: "ACCESS_REQUEST"
+        pkPatternTemplate: "ACCESS_REQUEST#${accessRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestCreate
+      responses:
+        '201':
+          description: Access request created
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/access-requests/{accessRequestId}:
+    get:
+      operationId: getAccessRequest
+      tags: [AccessRequests]
+      summary: Get access request by id
+      x-dynamodb:
+        entityType: "ACCESS_REQUEST"
+        pkPatternTemplate: "ACCESS_REQUEST#${accessRequestId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: accessRequestId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/AccessRequestId
+      responses:
+        '200':
+          description: Access request
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/access-requests/{accessRequestId}/decide:
+    post:
+      operationId: decideAccessRequest
+      tags: [AccessRequests]
+      summary: Approve or deny an access request
+      description: |
+        Learner (or guardian) decision. Approve may mint a ConsentGrant; deny is terminal
+        (no silent retry loop in product UX).
+      parameters:
+        - name: accessRequestId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/AccessRequestId
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestDecide
+      responses:
+        '200':
+          description: Access request decided
+          content:
+            application/json:
+              schema:
+                $ref: ./consents.schemas.yaml#/components/schemas/AccessRequestResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey

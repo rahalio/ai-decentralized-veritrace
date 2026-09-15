@@ -1,0 +1,220 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Blocks schemas
+  version: 0.1.0
+  description: LearningBlock and DeletionRequest schemas with envelope responses.
+paths: {}
+components:
+  schemas:
+    LearningBlockStatus:
+      type: string
+      enum:
+        - delivered
+        - pending_lbr
+        - deleted
+
+    LearningBlockEvent:
+      type: object
+      description: Opaque activity event payload assembled into a learning block (not retained centrally).
+      additionalProperties: true
+
+    LearningBlock:
+      type: object
+      description: |
+        Signed learning-block metadata. Raw events live in the learner LBR;
+        Veritrace keeps hashes, linkage, and delivery status.
+      required:
+        - blockId
+        - spaceId
+        - learnerId
+        - activityId
+        - contentHash
+        - lbrEndpointId
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        learnerId:
+          $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        activityId:
+          $ref: ./common/primitives.yaml#/components/schemas/ActivityId
+        contentHash:
+          type: string
+          description: Opaque content hash of the signed block.
+          minLength: 16
+          maxLength: 128
+        signature:
+          type: string
+          description: Detached signature over the block payload (hex or base64).
+          maxLength: 512
+        lbrEndpointId:
+          $ref: ./common/primitives.yaml#/components/schemas/LbrEndpointId
+        status:
+          $ref: '#/components/schemas/LearningBlockStatus'
+        commitmentId:
+          $ref: ./common/primitives.yaml#/components/schemas/CommitmentId
+          description: Present when an optional chain commitment was anchored.
+        deliveredAt:
+          type: string
+          format: date-time
+        deletedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LearningBlockCreate:
+      type: object
+      required:
+        - spaceId
+        - learnerId
+        - activityId
+        - events
+        - lbrEndpointId
+      properties:
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        learnerId:
+          $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        activityId:
+          $ref: ./common/primitives.yaml#/components/schemas/ActivityId
+        lbrEndpointId:
+          $ref: ./common/primitives.yaml#/components/schemas/LbrEndpointId
+        events:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LearningBlockEvent'
+        anchorIfPolicyAllows:
+          type: boolean
+          default: true
+          description: When true and space necessity allows, queue an opaque hash anchor.
+
+    DeletionRequestStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - completed
+        - failed
+
+    DeletionRequest:
+      type: object
+      description: Request to delete raw block content from the learner LBR.
+      required:
+        - deletionRequestId
+        - blockId
+        - learnerId
+        - status
+        - requestedAt
+        - createdAt
+        - updatedAt
+      properties:
+        deletionRequestId:
+          $ref: ./common/primitives.yaml#/components/schemas/DeletionRequestId
+        blockId:
+          $ref: ./common/primitives.yaml#/components/schemas/BlockId
+        learnerId:
+          $ref: ./common/primitives.yaml#/components/schemas/LearnerId
+        lbrEndpointId:
+          $ref: ./common/primitives.yaml#/components/schemas/LbrEndpointId
+        status:
+          $ref: '#/components/schemas/DeletionRequestStatus'
+        reason:
+          type: string
+          maxLength: 2000
+        failureDetail:
+          type: string
+          maxLength: 2000
+        requestedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DeletionRequestCreate:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 2000
+          description: Optional learner-facing reason (withdrawal, GDPR, etc.).
+
+    LearningBlockListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningBlock'
+        nextCursor:
+          type: string
+
+    LearningBlockResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LearningBlock'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    LearningBlockListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LearningBlockListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    DeletionRequestListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeletionRequest'
+        nextCursor:
+          type: string
+
+    DeletionRequestResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DeletionRequest'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    DeletionRequestListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DeletionRequestListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

@@ -1,0 +1,305 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Spaces schemas
+  version: 0.1.0
+  description: |
+    LearningSpace, NecessityDecision, and DpiAEvidencePack schemas with envelope responses.
+paths: {}
+components:
+  schemas:
+    LearningSpace:
+      type: object
+      description: |
+        Registered learning space (Graasp-class). Research collection and anchoring
+        are explicit flags — anchoring requires a necessity decision.
+      required:
+        - spaceId
+        - name
+        - researchCollectionEnabled
+        - anchoringEnabled
+        - createdAt
+        - updatedAt
+      properties:
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        externalSpaceRef:
+          type: string
+          description: Upstream LMS / Graasp space reference when known.
+          maxLength: 200
+        researchCollectionEnabled:
+          type: boolean
+          description: Whether consented research collection is enabled for this space.
+        anchoringEnabled:
+          type: boolean
+          description: |
+            Whether optional chain anchoring is enabled. Must remain false until a
+            necessity decision with useBlockchain=true (or equivalent outcome) exists.
+        latestNecessityDecisionId:
+          $ref: ./common/primitives.yaml#/components/schemas/NecessityDecisionId
+        activityHookStatus:
+          type: string
+          enum: [unconfigured, healthy, degraded, failed]
+          description: Activity-close hook health for block emission.
+        learnerOptInCount:
+          type: integer
+          minimum: 0
+          description: Aggregate learner opt-in count (no raw telemetry).
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    LearningSpaceCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        externalSpaceRef:
+          type: string
+          maxLength: 200
+        researchCollectionEnabled:
+          type: boolean
+          default: false
+          description: Defaults false; blocked without opt-in policy in product UX.
+
+    NecessityOutcome:
+      type: string
+      description: Recorded chain posture after Wüst–Gervais checklist.
+      enum:
+        - permissioned
+        - permissionless
+        - no_chain
+
+    NecessityCriteria:
+      type: object
+      description: |
+        Checklist answers driving the necessity outcome (shared state, writers,
+        trusted party, known writers).
+      properties:
+        sharedStateRequired:
+          type: boolean
+        multipleWriters:
+          type: boolean
+        trustedThirdPartyAvailable:
+          type: boolean
+        writersKnownInAdvance:
+          type: boolean
+        additionalFlags:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    NecessityDecision:
+      type: object
+      description: Immutable-style record that chain anchoring is warranted or skipped.
+      required:
+        - necessityDecisionId
+        - spaceId
+        - useBlockchain
+        - outcome
+        - rationale
+        - feeLatencyAccepted
+        - decidedAt
+        - createdAt
+      properties:
+        necessityDecisionId:
+          $ref: ./common/primitives.yaml#/components/schemas/NecessityDecisionId
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        useBlockchain:
+          type: boolean
+          description: True when an on-chain anchor path is warranted.
+        outcome:
+          $ref: '#/components/schemas/NecessityOutcome'
+        criteria:
+          $ref: '#/components/schemas/NecessityCriteria'
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        feeLatencyAccepted:
+          type: boolean
+          description: Explicit acceptance of fee/latency trade-offs (or N/A when no_chain).
+        decidedBy:
+          $ref: ./common/primitives.yaml#/components/schemas/UserId
+        decidedAt:
+          type: string
+          format: date-time
+        reviewAt:
+          type: string
+          format: date-time
+          description: Optional scheduled review date.
+        createdAt:
+          type: string
+          format: date-time
+
+    NecessityDecisionCreate:
+      type: object
+      required:
+        - useBlockchain
+        - outcome
+        - rationale
+        - feeLatencyAccepted
+      properties:
+        useBlockchain:
+          type: boolean
+        outcome:
+          $ref: '#/components/schemas/NecessityOutcome'
+        criteria:
+          $ref: '#/components/schemas/NecessityCriteria'
+        rationale:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        feeLatencyAccepted:
+          type: boolean
+        reviewAt:
+          type: string
+          format: date-time
+
+    DeletionCompletionMetrics:
+      type: object
+      description: GDPR deletion SLA snapshot for DPIA evidence.
+      properties:
+        requestedCount:
+          type: integer
+          minimum: 0
+        completedCount:
+          type: integer
+          minimum: 0
+        failedCount:
+          type: integer
+          minimum: 0
+        medianCompletionHours:
+          type: number
+          minimum: 0
+
+    DpiAEvidencePack:
+      type: object
+      description: |
+        Privacy-officer pack proving raw traces are not on chain and documenting
+        necessity + deletion posture for a space.
+      required:
+        - spaceId
+        - onChainPolicyAttestation
+        - generatedAt
+      properties:
+        spaceId:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        onChainPolicyAttestation:
+          type: string
+          description: Human-readable attestation that ledger holds opaque hashes only.
+          maxLength: 4000
+        sampleCommitmentHash:
+          type: string
+          description: Opaque sample commitment (never identifying metadata).
+          maxLength: 128
+        necessityDecisionIds:
+          type: array
+          items:
+            $ref: ./common/primitives.yaml#/components/schemas/NecessityDecisionId
+        anchoringEnabled:
+          type: boolean
+        personalDataOnLedgerDetected:
+          type: boolean
+          description: True if any adapter ever allowed identifying metadata on ledger.
+        deletionMetrics:
+          $ref: '#/components/schemas/DeletionCompletionMetrics'
+        centralCustodyReductionPercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Estimated reduction in centrally stored raw traces.
+        generatedAt:
+          type: string
+          format: date-time
+
+    LearningSpaceListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LearningSpace'
+        nextCursor:
+          type: string
+
+    LearningSpaceResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LearningSpace'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    LearningSpaceListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/LearningSpaceListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    NecessityDecisionListData:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NecessityDecision'
+        nextCursor:
+          type: string
+
+    NecessityDecisionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/NecessityDecision'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    NecessityDecisionListResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/NecessityDecisionListData'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta
+
+    DpiAEvidencePackResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/DpiAEvidencePack'
+        meta:
+          $ref: ./common/envelopes.yaml#/components/schemas/ResponseMeta

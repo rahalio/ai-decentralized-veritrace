@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Exports API
+  version: 0.1.0
+  description: |
+    Ethics-ready research export packages with verification proofs and consent artefacts (BR-11).
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: exp
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: Exports
+    description: Verified research export packages
+paths:
+  /v1/exports:
+    get:
+      operationId: listResearchExports
+      tags: [Exports]
+      summary: List research exports
+      x-dynamodb:
+        entityType: "EXPORT"
+        pkPatternTemplate: "EXPORT#${exportId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: consentId
+          in: query
+          required: false
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ConsentId
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ./exports.schemas.yaml#/components/schemas/ResearchExportStatus
+      responses:
+        '200':
+          description: Exports page
+          content:
+            application/json:
+              schema:
+                $ref: ./exports.schemas.yaml#/components/schemas/ResearchExportListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: createResearchExport
+      tags: [Exports]
+      summary: Create a research export package
+      description: |
+        Bundle verified blocks with consent artefacts and necessity summary.
+        Generation is blocked if any selected block failed verification (unless policy allows no_anchor).
+      x-dynamodb:
+        entityType: "EXPORT"
+        pkPatternTemplate: "EXPORT#${exportId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./exports.schemas.yaml#/components/schemas/ResearchExportCreate
+      responses:
+        '201':
+          description: Export created
+          content:
+            application/json:
+              schema:
+                $ref: ./exports.schemas.yaml#/components/schemas/ResearchExportResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/exports/{exportId}:
+    get:
+      operationId: getResearchExport
+      tags: [Exports]
+      summary: Get research export by id
+      x-dynamodb:
+        entityType: "EXPORT"
+        pkPatternTemplate: "EXPORT#${exportId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/ExportId
+      responses:
+        '200':
+          description: Export
+          content:
+            application/json:
+              schema:
+                $ref: ./exports.schemas.yaml#/components/schemas/ResearchExportResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey

@@ -1,0 +1,277 @@
+openapi: 3.1.0
+info:
+  title: Veritrace — Spaces API
+  version: 0.1.0
+  description: |
+    Learning-space registry, Wüst–Gervais necessity decisions, and DPIA evidence packs.
+    Auth: X-API-Key (tenant implied). Anchoring stays off until a necessity decision allows it.
+  license:
+    name: Proprietary
+    url: https://veritrace.local/license
+  x-domain: spc
+servers:
+  - url: https://api.veritrace.local
+    description: Local / starter API
+security:
+  - apiKey: []
+tags:
+  - name: Spaces
+    description: Learning spaces and research collection enablement
+  - name: NecessityDecisions
+    description: Recorded blockchain necessity decisions per space
+  - name: DpiA
+    description: DPIA evidence packs for privacy officers
+paths:
+  /v1/spaces:
+    get:
+      operationId: listLearningSpaces
+      tags: [Spaces]
+      summary: List learning spaces
+      description: |
+        Returns registered Graasp-class learning spaces for the tenant.
+        Ordered by createdAt descending.
+      x-dynamodb:
+        entityType: "SPACE"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: researchCollectionEnabled
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by research collection flag.
+      responses:
+        '200':
+          description: Spaces page
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/LearningSpaceListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: registerLearningSpace
+      tags: [Spaces]
+      summary: Register a learning space
+      description: |
+        Register a learning space with activity hooks. Research collection defaults off;
+        anchoring stays disabled until a necessity decision allows it.
+      x-dynamodb:
+        entityType: "SPACE"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./spaces.schemas.yaml#/components/schemas/LearningSpaceCreate
+      responses:
+        '201':
+          description: Space registered
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/LearningSpaceResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/spaces/{spaceId}:
+    get:
+      operationId: getLearningSpace
+      tags: [Spaces]
+      summary: Get learning space by id
+      x-dynamodb:
+        entityType: "SPACE"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "METADATA"
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+      responses:
+        '200':
+          description: Space
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/LearningSpaceResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/spaces/{spaceId}/necessity-decisions:
+    parameters:
+      - name: spaceId
+        in: path
+        required: true
+        schema:
+          $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+    get:
+      operationId: listNecessityDecisions
+      tags: [NecessityDecisions]
+      summary: List necessity decisions for a space
+      description: Decision log for DPIA and ops queue (newest first).
+      x-dynamodb:
+        entityType: "NECESSITY"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "NECESSITY#${necessityDecisionId}"
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Necessity decisions page
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/NecessityDecisionListResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+    post:
+      operationId: recordNecessityDecision
+      tags: [NecessityDecisions]
+      summary: Record a blockchain necessity decision
+      description: |
+        Wüst–Gervais-style recorded decision before any chain anchoring is enabled —
+        including fee/latency acceptance or explicit skip (no chain).
+      x-dynamodb:
+        entityType: "NECESSITY"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "NECESSITY#${necessityDecisionId}"
+      parameters:
+        - $ref: ./common/parameters.yaml#/components/parameters/IdempotencyKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ./spaces.schemas.yaml#/components/schemas/NecessityDecisionCreate
+      responses:
+        '201':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/NecessityDecisionResponse
+        '400':
+          $ref: ./common/responses.yaml#/components/responses/BadRequest
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        '409':
+          $ref: ./common/responses.yaml#/components/responses/Conflict
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/spaces/{spaceId}/necessity-decisions/{necessityDecisionId}:
+    get:
+      operationId: getNecessityDecision
+      tags: [NecessityDecisions]
+      summary: Get necessity decision by id
+      x-dynamodb:
+        entityType: "NECESSITY"
+        pkPatternTemplate: "SPACE#${spaceId}"
+        skPatternTemplate: "NECESSITY#${necessityDecisionId}"
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+        - name: necessityDecisionId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/NecessityDecisionId
+      responses:
+        '200':
+          description: Necessity decision
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/NecessityDecisionResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+  /v1/spaces/{spaceId}/dpia-evidence:
+    get:
+      operationId: getDpiAEvidencePack
+      tags: [DpiA]
+      summary: Get DPIA evidence pack for a space
+      description: |
+        Prove raw traces are not on chain; surface necessity decisions and deletion
+        completion metrics for privacy-officer export.
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            $ref: ./common/primitives.yaml#/components/schemas/SpaceId
+      responses:
+        '200':
+          description: DPIA evidence pack
+          content:
+            application/json:
+              schema:
+                $ref: ./spaces.schemas.yaml#/components/schemas/DpiAEvidencePackResponse
+        '401':
+          $ref: ./common/responses.yaml#/components/responses/Unauthorized
+        '404':
+          $ref: ./common/responses.yaml#/components/responses/NotFound
+        default:
+          $ref: ./common/responses.yaml#/components/responses/Problem
+
+components:
+  securitySchemes:
+    apiKey:
+      $ref: ./common/security.yaml#/components/securitySchemes/apiKey
